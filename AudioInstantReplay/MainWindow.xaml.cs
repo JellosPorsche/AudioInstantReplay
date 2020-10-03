@@ -1,4 +1,5 @@
-﻿using NAudio.Wave;
+﻿using NAudio.Lame;
+using NAudio.Wave;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -88,14 +89,23 @@ namespace AudioInstantReplay
         private void Button_Save_Click(object sender, RoutedEventArgs e)
         {
             // Create output filename
-            string outFileName = DateTime.Now.ToLongDateString() + "_" + DateTime.Now.ToLongTimeString().Replace(":", ".") + ".wav";
+            string outFileNameWav = DateTime.Now.ToLongDateString() + "_" + DateTime.Now.ToLongTimeString().Replace(":", ".") + ".wav";
+            string outFileNameMp3 = DateTime.Now.ToLongDateString() + "_" + DateTime.Now.ToLongTimeString().Replace(":", ".") + ".mp3";
 
             // Write to disk
-            var writer = new WaveFileWriter(Path.Combine(outputFolder, outFileName), capture.WaveFormat);
+            var wavWriter = new WaveFileWriter(Path.Combine(outputFolder, outFileNameWav), capture.WaveFormat);
             byte[] writeBytes = audioBytes.ToArray();
-            writer.Write(writeBytes, 0, writeBytes.Length);
-            writer.Dispose();
-            writer = null;
+            wavWriter.Write(writeBytes, 0, writeBytes.Length);
+            wavWriter.Dispose();
+            wavWriter = null;
+
+            // Compress into mp3
+            using (var reader = new AudioFileReader(Path.Combine(outputFolder, outFileNameWav)))
+            using (var writer = new LameMP3FileWriter(Path.Combine(outputFolder, outFileNameMp3), reader.WaveFormat, 128))
+                reader.CopyTo(writer);
+
+            // Delete original wav file
+            File.Delete(Path.Combine(outputFolder, outFileNameWav));
 
             // Show saved message for 2 seconds
             SavedMsgVis = true;
