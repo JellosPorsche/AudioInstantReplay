@@ -67,6 +67,8 @@
                 Style="{StaticResource IconButtonStyle}">
             <Image Source="pack://application:,,,/Resources/StartRec.png"/>
         </Button>
+        <TextBlock Grid.Column="0" VerticalAlignment="Bottom" HorizontalAlignment="Center" FontSize="12" Foreground="#4889c7"
+                   Visibility="{Binding StartRecVis, Converter={StaticResource boolToVis}, UpdateSourceTrigger=PropertyChanged}">Start</TextBlock>
 
         <!--Stop Button-->
         <Button Grid.Column="0" Margin="0,-10,0,0" Click="Button_StartStop_Click" Background="Transparent" BorderBrush="Transparent"
@@ -75,7 +77,8 @@
                 Style="{StaticResource IconButtonStyle}">
             <Image Source="pack://application:,,,/Resources/StopRec.png"/>
         </Button>
-        <TextBlock Grid.Column="0" VerticalAlignment="Bottom" HorizontalAlignment="Center" FontSize="12" Foreground="#4889c7">Start</TextBlock>
+        <TextBlock Grid.Column="0" VerticalAlignment="Bottom" HorizontalAlignment="Center" FontSize="12" Foreground="#4889c7"
+                   Visibility="{Binding StopRecVis, Converter={StaticResource boolToVis}, UpdateSourceTrigger=PropertyChanged}">Stop</TextBlock>
 
         <!--Separator-->
         <Rectangle Grid.Column="1" VerticalAlignment="Stretch" Width="1" HorizontalAlignment="Center" Stroke="#4889c7" />
