@@ -48,6 +48,13 @@ namespace AudioInstantReplay
             InputDevices = new CollectionView(deviceList);
             SelectedInputDevice = InputDeviceId;
 
+            // Play silence so mic output matches speaker output
+            WasapiLoopbackCapture tempCapture = new WasapiLoopbackCapture();
+            var silence = new SilenceProvider(tempCapture.WaveFormat).ToSampleProvider();
+            WaveOutEvent wo = new WaveOutEvent();
+            wo.Init(silence);
+            wo.Play();
+
             // Initialize Component
             InitializeComponent();
         }
@@ -82,6 +89,10 @@ namespace AudioInstantReplay
                 {
                     micCapture.StopRecording();
                 }
+
+                // Re-init buffers
+                speakerBytes = new CircularBuffer<byte>(DurationToBytes(ReplayDuration));
+                micBytes = new CircularBuffer<byte>(DurationToBytes(ReplayDuration));
             }
 
             // Start recording
@@ -190,6 +201,16 @@ namespace AudioInstantReplay
                 // Mux mic and speaker audio
                 if (InputDeviceId != -9999)
                 {
+                    //using (var reader1 = new AudioFileReader(Path.Combine(OutputLocation, outFileNameSpeakerWav)))
+                    //using (var reader2 = new AudioFileReader(Path.Combine(OutputLocation, outFileNameMicWav)))
+                    //{
+                    //    reader1.Volume = 0.75f;
+                    //    reader2.Volume = 0.75f;
+
+                    //    var mixer = new MixingSampleProvider(new[] { reader1, reader2 });
+                    //    WaveFileWriter.CreateWaveFile16(Path.Combine(OutputLocation, outFileNameMuxWav), mixer);
+                    //}
+
                     using (var reader1 = new AudioFileReader(Path.Combine(OutputLocation, outFileNameSpeakerWav)))
                     using (var reader2 = new AudioFileReader(Path.Combine(OutputLocation, outFileNameMicWav)))
                     {
@@ -197,16 +218,14 @@ namespace AudioInstantReplay
                         reader2.Volume = 0.75f;
 
                         var mixer = new MixingSampleProvider(new[] { reader1, reader2 });
-                        WaveFileWriter.CreateWaveFile16(Path.Combine(OutputLocation, outFileNameMuxWav), mixer);
-                    }
-                }
+                        var waveProvider = mixer.ToWaveProvider();
 
-                // Compress into mp3
-                if (InputDeviceId != -9999)
-                {
-                    using (var reader = new AudioFileReader(Path.Combine(OutputLocation, outFileNameMuxWav)))
-                    using (var writer = new LameMP3FileWriter(Path.Combine(OutputLocation, outFileNameMp3), reader.WaveFormat, 128))
-                        reader.CopyTo(writer);
+                        var mp3Writer = new LameMP3FileWriter(Path.Combine(OutputLocation, outFileNameMp3), mixer.WaveFormat, 128);
+                        WaveProviderToWaveStream waveStream = new WaveProviderToWaveStream(waveProvider);
+                        waveStream.CopyTo(mp3Writer);
+                        waveStream.Dispose();
+                        mp3Writer.Dispose();
+                    }
                 }
                 else
                 {
