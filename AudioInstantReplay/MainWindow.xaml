@@ -260,8 +260,14 @@
             <RowDefinition Height="3"/>
         </Grid.RowDefinitions>
 
-        <!--Saved to Message-->
+        <!--Saving Message-->
         <Border Grid.Column="2" Panel.ZIndex="1" Width="70" Height="30" BorderThickness="1" BorderBrush="#4889c7" Background="#b6dcfe"
+                Visibility="{Binding SavingMsgVis, Converter={StaticResource boolToVis}, UpdateSourceTrigger=PropertyChanged}">
+            <TextBlock HorizontalAlignment="Center" FontSize="20" Text="Saving" Foreground="#4889c7"/>
+        </Border>
+
+        <!--Saved Message-->
+        <Border Grid.Column="2" Panel.ZIndex="2" Width="70" Height="30" BorderThickness="1" BorderBrush="#4889c7" Background="#b6dcfe"
                 Visibility="{Binding SavedMsgVis, Converter={StaticResource boolToVis}, UpdateSourceTrigger=PropertyChanged}">
             <TextBlock HorizontalAlignment="Center" FontSize="20" Text="Saved" Foreground="#4889c7"/>
         </Border>

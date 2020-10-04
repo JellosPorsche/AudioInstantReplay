@@ -14,11 +14,6 @@ using System.Windows.Data;
 using System.Windows.Forms;
 using Path = System.IO.Path;
 
-// TODO:
-// GRAY OUT DURATION CONTROL WHEN RECORDING
-// OUTPUT FILE LOCATION VALIDATION NAH JUST REQUIRE BROWSE BUTTON PRESS
-// RESIZE THE BUTTON ICONS TO MAKE THEM NOT LOOK WEIRD DOWNSAMPLED
-
 namespace AudioInstantReplay
 {
     /// <summary>
@@ -158,66 +153,79 @@ namespace AudioInstantReplay
         // Save the last minute of audio
         private void Button_Save_Click(object sender, RoutedEventArgs e)
         {
-            // Create output filename
-            string outFileNameSpeakerWav = DateTime.Now.ToLongDateString() + "_" + DateTime.Now.ToLongTimeString().Replace(":", ".") + "_Speaker.wav";
-            string outFileNameMicWav = DateTime.Now.ToLongDateString() + "_" + DateTime.Now.ToLongTimeString().Replace(":", ".") + "_Mic.wav";
-            string outFileNameMuxWav = DateTime.Now.ToLongDateString() + "_" + DateTime.Now.ToLongTimeString().Replace(":", ".") + "_Mux.wav";
-            string outFileNameMp3 = DateTime.Now.ToLongDateString() + "_" + DateTime.Now.ToLongTimeString().Replace(":", ".") + ".mp3";
-
-            // Write speaker audio to disk
-            var wavWriter = new WaveFileWriter(Path.Combine(OutputLocation, outFileNameSpeakerWav), audioCapture.WaveFormat);
-            byte[] writeBytes = speakerBytes.ToArray();
-            wavWriter.Write(writeBytes, 0, writeBytes.Length);
-            wavWriter.Dispose();
-            wavWriter = null;
-
-            // Write mic audio to disk
-            if (InputDeviceId != -9999)
+            Task.Run(() =>
             {
-                wavWriter = new WaveFileWriter(Path.Combine(OutputLocation, outFileNameMicWav), audioCapture.WaveFormat);
-                writeBytes = micBytes.ToArray();
+                // Show Saving message for 1 seconds
+                SavingMsgVis = true;
+
+                Thread.Sleep(1000);
+                SavingMsgVis = false;
+            });
+            
+            Task.Run(() =>
+            {
+                // Create output filename
+                string outFileNameSpeakerWav = DateTime.Now.ToLongDateString() + "_" + DateTime.Now.ToLongTimeString().Replace(":", ".") + "_Speaker.wav";
+                string outFileNameMicWav = DateTime.Now.ToLongDateString() + "_" + DateTime.Now.ToLongTimeString().Replace(":", ".") + "_Mic.wav";
+                string outFileNameMuxWav = DateTime.Now.ToLongDateString() + "_" + DateTime.Now.ToLongTimeString().Replace(":", ".") + "_Mux.wav";
+                string outFileNameMp3 = DateTime.Now.ToLongDateString() + "_" + DateTime.Now.ToLongTimeString().Replace(":", ".") + ".mp3";
+
+                // Write speaker audio to disk
+                var wavWriter = new WaveFileWriter(Path.Combine(OutputLocation, outFileNameSpeakerWav), audioCapture.WaveFormat);
+                byte[] writeBytes = speakerBytes.ToArray();
                 wavWriter.Write(writeBytes, 0, writeBytes.Length);
                 wavWriter.Dispose();
                 wavWriter = null;
-            }
 
-            // Mux mic and speaker audio
-            if (InputDeviceId != -9999)
-            {
-                using (var reader1 = new AudioFileReader(Path.Combine(OutputLocation, outFileNameSpeakerWav)))
-                using (var reader2 = new AudioFileReader(Path.Combine(OutputLocation, outFileNameMicWav)))
+                // Write mic audio to disk
+                if (InputDeviceId != -9999)
                 {
-                    var mixer = new MixingSampleProvider(new[] { reader1, reader2 });
-                    WaveFileWriter.CreateWaveFile16(Path.Combine(OutputLocation, outFileNameMuxWav), mixer);
+                    wavWriter = new WaveFileWriter(Path.Combine(OutputLocation, outFileNameMicWav), audioCapture.WaveFormat);
+                    writeBytes = micBytes.ToArray();
+                    wavWriter.Write(writeBytes, 0, writeBytes.Length);
+                    wavWriter.Dispose();
+                    wavWriter = null;
                 }
-            }
 
-            // Compress into mp3
-            if (InputDeviceId != -9999)
-            {
-                using (var reader = new AudioFileReader(Path.Combine(OutputLocation, outFileNameMuxWav)))
-                using (var writer = new LameMP3FileWriter(Path.Combine(OutputLocation, outFileNameMp3), reader.WaveFormat, 128))
-                    reader.CopyTo(writer);
-            }
-            else
-            {
-                using (var reader = new AudioFileReader(Path.Combine(OutputLocation, outFileNameSpeakerWav)))
-                using (var writer = new LameMP3FileWriter(Path.Combine(OutputLocation, outFileNameMp3), reader.WaveFormat, 128))
-                    reader.CopyTo(writer);
-            }
+                // Mux mic and speaker audio
+                if (InputDeviceId != -9999)
+                {
+                    using (var reader1 = new AudioFileReader(Path.Combine(OutputLocation, outFileNameSpeakerWav)))
+                    using (var reader2 = new AudioFileReader(Path.Combine(OutputLocation, outFileNameMicWav)))
+                    {
+                        reader1.Volume = 0.75f;
+                        reader2.Volume = 0.75f;
 
-            // Delete original wav file
-            File.Delete(Path.Combine(OutputLocation, outFileNameSpeakerWav));
-            if (InputDeviceId != -9999)
-            {
-                File.Delete(Path.Combine(OutputLocation, outFileNameMicWav));
-                File.Delete(Path.Combine(OutputLocation, outFileNameMuxWav));
-            }
+                        var mixer = new MixingSampleProvider(new[] { reader1, reader2 });
+                        WaveFileWriter.CreateWaveFile16(Path.Combine(OutputLocation, outFileNameMuxWav), mixer);
+                    }
+                }
 
-            // Show saved message for 2 seconds
-            SavedMsgVis = true;
-            Task.Run(() =>
-            {
+                // Compress into mp3
+                if (InputDeviceId != -9999)
+                {
+                    using (var reader = new AudioFileReader(Path.Combine(OutputLocation, outFileNameMuxWav)))
+                    using (var writer = new LameMP3FileWriter(Path.Combine(OutputLocation, outFileNameMp3), reader.WaveFormat, 128))
+                        reader.CopyTo(writer);
+                }
+                else
+                {
+                    using (var reader = new AudioFileReader(Path.Combine(OutputLocation, outFileNameSpeakerWav)))
+                    using (var writer = new LameMP3FileWriter(Path.Combine(OutputLocation, outFileNameMp3), reader.WaveFormat, 128))
+                        reader.CopyTo(writer);
+                }
+
+                // Delete original wav file
+                File.Delete(Path.Combine(OutputLocation, outFileNameSpeakerWav));
+                if (InputDeviceId != -9999)
+                {
+                    File.Delete(Path.Combine(OutputLocation, outFileNameMicWav));
+                    File.Delete(Path.Combine(OutputLocation, outFileNameMuxWav));
+                }
+
+                // Show saved message for 2 seconds
+                SavedMsgVis = true;
+
                 Thread.Sleep(2000);
                 SavedMsgVis = false;
             });
@@ -285,6 +293,17 @@ namespace AudioInstantReplay
             set
             {
                 mSavedMsgVis = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        // Saving Message visibility
+        public bool SavingMsgVis
+        {
+            get { return mSavingMsgVis; }
+            set
+            {
+                mSavingMsgVis = value;
                 NotifyPropertyChanged();
             }
         }
@@ -416,6 +435,7 @@ namespace AudioInstantReplay
         bool mStartRecVis = true;
         bool mStopRecVis = false;
         bool mSavedMsgVis = false;
+        bool mSavingMsgVis = false;
         string mOutputLocation = "";
         string mSettingControlLightColor = "#4889c7";
         string mSettingControlDarkColor = "#4889c7";
